@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="ISO8583 Server Test Plan">
+      <stringProp name="TestPlan.comments">Complete ISO8583 Server that listens on port 10000 and responds to incoming requests.
+
+This server uses the ISO8583 Transaction Manager with Java participants:
+- SampleSelector: Routes messages by MTI
+- SampleNetworkHandler: Handles 0800 Network Management messages
+- SampleFinancialHandler: Handles 0100/0200/0400 Financial messages
+
+Supported message types:
+- 0800: Network Management (Echo, Sign-On, Sign-Off)
+- 0100: Authorization Request
+- 0200: Financial Transaction (Purchase, Withdrawal, Balance)
+- 0400: Reversal
+
+Usage:
+1. Run this test plan: jmeter -n -t ISO8583-Server-TestPlan.jmx
+2. Server listens on port 10000
+3. Press Ctrl+C to stop
+
+To test, use the ISO8583-ClientMode-TestPlan.jmx against this server.</stringProp>
+      <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+        <collectionProp name="Arguments.arguments"/>
+      </elementProp>
+    </TestPlan>
+    <hashTree>
+      <ISO8583Server guiclass="TestBeanGUI" testclass="ISO8583Server" testname="ISO8583 Server">
+        <stringProp name="configKey">iso8583-server</stringProp>
+        <stringProp name="port">10000</stringProp>
+        <stringProp name="classname">ASCIIChannel</stringProp>
+        <stringProp name="packager">jar:packager/iso87ascii.xml</stringProp>
+        <stringProp name="header"></stringProp>
+        <stringProp name="connectionSelection">connectionSelection.LAST</stringProp>
+        <collectionProp name="channelConfig"/>
+        <stringProp name="keystore"></stringProp>
+        <stringProp name="storePassword"></stringProp>
+        <stringProp name="keyPassword"></stringProp>
+        <stringProp name="mtiMapping"></stringProp>
+        <collectionProp name="muxKeyConfig"/>
+        <stringProp name="requestListener"></stringProp>
+      </ISO8583Server>
+      <hashTree/>
+      <ISO8583TransactionManager guiclass="TestBeanGUI" testclass="ISO8583TransactionManager" testname="ISO8583 Transaction Manager" enabled="true">
+        <collectionProp name="treeConfig">
+          <elementProp name="" elementType="TxnMgrTreeNode">
+            <intProp name="nodeId">0</intProp>
+            <intProp name="parentId">-1</intProp>
+            <stringProp name="nodeType">PARTICIPANT</stringProp>
+            <stringProp name="className">nz.co.breakpoint.jmeter.iso8583.participants.SampleSelector</stringProp>
+            <stringProp name="logger">Q2</stringProp>
+          </elementProp>
+          <elementProp name="request" elementType="TxnMgrTreeNode" testname="request">
+            <intProp name="nodeId">1</intProp>
+            <intProp name="parentId">0</intProp>
+            <stringProp name="nodeType">PROPERTY</stringProp>
+            <stringProp name="propValue">REQUEST</stringProp>
+          </elementProp>
+          <elementProp name="0800" elementType="TxnMgrTreeNode" testname="0800">
+            <intProp name="nodeId">2</intProp>
+            <intProp name="parentId">0</intProp>
+            <stringProp name="nodeType">PROPERTY</stringProp>
+            <stringProp name="propValue">Network</stringProp>
+          </elementProp>
+          <elementProp name="0100" elementType="TxnMgrTreeNode" testname="0100">
+            <intProp name="nodeId">3</intProp>
+            <intProp name="parentId">0</intProp>
+            <stringProp name="nodeType">PROPERTY</stringProp>
+            <stringProp name="propValue">Financial</stringProp>
+          </elementProp>
+          <elementProp name="0200" elementType="TxnMgrTreeNode" testname="0200">
+            <intProp name="nodeId">4</intProp>
+            <intProp name="parentId">0</intProp>
+            <stringProp name="nodeType">PROPERTY</stringProp>
+            <stringProp name="propValue">Financial</stringProp>
+          </elementProp>
+          <elementProp name="0400" elementType="TxnMgrTreeNode" testname="0400">
+            <intProp name="nodeId">5</intProp>
+            <intProp name="parentId">0</intProp>
+            <stringProp name="nodeType">PROPERTY</stringProp>
+            <stringProp name="propValue">Financial</stringProp>
+          </elementProp>
+          <elementProp name="default" elementType="TxnMgrTreeNode" testname="default">
+            <intProp name="nodeId">6</intProp>
+            <intProp name="parentId">0</intProp>
+            <stringProp name="nodeType">PROPERTY</stringProp>
+            <stringProp name="propValue">Financial</stringProp>
+          </elementProp>
+          <elementProp name="Network" elementType="TxnMgrTreeNode" testname="Network">
+            <intProp name="nodeId">10</intProp>
+            <intProp name="parentId">-1</intProp>
+            <stringProp name="nodeType">GROUP</stringProp>
+          </elementProp>
+          <elementProp name="" elementType="TxnMgrTreeNode">
+            <intProp name="nodeId">11</intProp>
+            <intProp name="parentId">10</intProp>
+            <stringProp name="nodeType">PARTICIPANT</stringProp>
+            <stringProp name="className">nz.co.breakpoint.jmeter.iso8583.participants.SampleNetworkHandler</stringProp>
+            <stringProp name="logger">Q2</stringProp>
+          </elementProp>
+          <elementProp name="request" elementType="TxnMgrTreeNode" testname="request">
+            <intProp name="nodeId">12</intProp>
+            <intProp name="parentId">11</intProp>
+            <stringProp name="nodeType">PROPERTY</stringProp>
+            <stringProp name="propValue">REQUEST</stringProp>
+          </elementProp>
+          <elementProp name="source" elementType="TxnMgrTreeNode" testname="source">
+            <intProp name="nodeId">13</intProp>
+            <intProp name="parentId">11</intProp>
+            <stringProp name="nodeType">PROPERTY</stringProp>
+            <stringProp name="propValue">SOURCE</stringProp>
+          </elementProp>
+          <elementProp name="Financial" elementType="TxnMgrTreeNode" testname="Financial">
+            <intProp name="nodeId">20</intProp>
+            <intProp name="parentId">-1</intProp>
+            <stringProp name="nodeType">GROUP</stringProp>
+          </elementProp>
+          <elementProp name="" elementType="TxnMgrTreeNode">
+            <intProp name="nodeId">21</intProp>
+            <intProp name="parentId">20</intProp>
+            <stringProp name="nodeType">PARTICIPANT</stringProp>
+            <stringProp name="className">nz.co.breakpoint.jmeter.iso8583.participants.SampleFinancialHandler</stringProp>
+            <stringProp name="logger">Q2</stringProp>
+          </elementProp>
+          <elementProp name="request" elementType="TxnMgrTreeNode" testname="request">
+            <intProp name="nodeId">22</intProp>
+            <intProp name="parentId">21</intProp>
+            <stringProp name="nodeType">PROPERTY</stringProp>
+            <stringProp name="propValue">REQUEST</stringProp>
+          </elementProp>
+          <elementProp name="source" elementType="TxnMgrTreeNode" testname="source">
+            <intProp name="nodeId">23</intProp>
+            <intProp name="parentId">21</intProp>
+            <stringProp name="nodeType">PROPERTY</stringProp>
+            <stringProp name="propValue">SOURCE</stringProp>
+          </elementProp>
+          <elementProp name="response-code" elementType="TxnMgrTreeNode" testname="response-code">
+            <intProp name="nodeId">24</intProp>
+            <intProp name="parentId">21</intProp>
+            <stringProp name="nodeType">PROPERTY</stringProp>
+            <stringProp name="propValue">00</stringProp>
+          </elementProp>
+        </collectionProp>
+        <stringProp name="txnMgrName">JMeterTxnMgr</stringProp>
+        <stringProp name="space">tspace:default</stringProp>
+        <stringProp name="queue">iso8583-server-unhandled</stringProp>
+        <stringProp name="sessions">5</stringProp>
+        <boolProp name="debug">true</boolProp>
+      </ISO8583TransactionManager>
+      <hashTree/>
+      <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree" enabled="false">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>true</responseData>
+            <samplerData>true</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>true</responseHeaders>
+            <requestHeaders>true</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename"></stringProp>
+      </ResultCollector>
+      <hashTree/>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>

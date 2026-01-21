@@ -1,0 +1,443 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="TransactionManager with BeanShell Test">
+      <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables">
+        <collectionProp name="Arguments.arguments"/>
+      </elementProp>
+    </TestPlan>
+    <hashTree>
+      <ISO8583Server guiclass="TestBeanGUI" testclass="ISO8583Server" testname="ISO8583 Server">
+        <stringProp name="configKey">iso8583-server</stringProp>
+        <stringProp name="port">10000</stringProp>
+        <stringProp name="classname">ASCIIChannel</stringProp>
+        <stringProp name="packager">jar:packager/iso87ascii.xml</stringProp>
+        <stringProp name="header"></stringProp>
+        <stringProp name="connectionSelection">connectionSelection.LAST</stringProp>
+        <collectionProp name="channelConfig"/>
+        <stringProp name="keystore"></stringProp>
+        <stringProp name="storePassword"></stringProp>
+        <stringProp name="keyPassword"></stringProp>
+        <stringProp name="mtiMapping"></stringProp>
+        <collectionProp name="muxKeyConfig"/>
+        <stringProp name="requestListener">txnmgr:txnmgr-queue</stringProp>
+      </ISO8583Server>
+      <hashTree/>
+      <ISO8583TransactionManager guiclass="TestBeanGUI" testclass="ISO8583TransactionManager" testname="Test Transaction Manager">
+        <collectionProp name="treeConfig">
+          <elementProp name="Network" elementType="TxnMgrTreeNode" testname="Network">
+            <intProp name="nodeId">10</intProp>
+            <intProp name="parentId">-1</intProp>
+            <stringProp name="nodeType">GROUP</stringProp>
+          </elementProp>
+          <elementProp name="" elementType="TxnMgrTreeNode">
+            <intProp name="nodeId">11</intProp>
+            <intProp name="parentId">10</intProp>
+            <stringProp name="nodeType">SCRIPT</stringProp>
+            <stringProp name="scriptName">Network Handler</stringProp>
+            <stringProp name="scriptContent">// Network Message Handler (0800/0810)
+import org.jpos.iso.ISOMsg;
+import org.jpos.iso.ISOSource;
+
+if (phase.equals(&quot;prepare&quot;)) {
+    ISOMsg msg = (ISOMsg) ctx.get(&quot;REQUEST&quot;);
+    ISOSource src = (ISOSource) ctx.get(&quot;SOURCE&quot;);
+    log.info(&quot;Network Handler: Processing &quot; + msg.getMTI());
+
+    // Create network response
+    ISOMsg response = (ISOMsg) msg.clone();
+    response.setResponseMTI();
+    response.set(39, &quot;00&quot;); // Approved
+
+    // Echo back network management data
+    if (msg.hasField(70)) {
+        String nmCode = msg.getString(70);
+        log.info(&quot;Network Handler: Network Management Code=&quot; + nmCode);
+
+        // Handle different network management codes
+        if (&quot;001&quot;.equals(nmCode)) {
+            log.info(&quot;Network Handler: Sign-on request&quot;);
+        } else if (&quot;002&quot;.equals(nmCode)) {
+            log.info(&quot;Network Handler: Sign-off request&quot;);
+        } else if (&quot;301&quot;.equals(nmCode)) {
+            log.info(&quot;Network Handler: Echo test&quot;);
+        }
+    }
+
+    // Send response in prepare phase while channel is still connected
+    if (src != null) {
+        src.send(response);
+        log.info(&quot;Network Handler: Response sent MTI=&quot; + response.getMTI());
+    }
+
+    ctx.put(&quot;RESPONSE&quot;, response);
+    result = PREPARED | NO_JOIN;
+}
+</stringProp>
+            <stringProp name="logger">Q2</stringProp>
+          </elementProp>
+          <elementProp name="Financial" elementType="TxnMgrTreeNode" testname="Financial">
+            <intProp name="nodeId">20</intProp>
+            <intProp name="parentId">-1</intProp>
+            <stringProp name="nodeType">GROUP</stringProp>
+          </elementProp>
+          <elementProp name="" elementType="TxnMgrTreeNode">
+            <intProp name="nodeId">21</intProp>
+            <intProp name="parentId">20</intProp>
+            <stringProp name="nodeType">SCRIPT</stringProp>
+            <stringProp name="scriptName">Financial Validator</stringProp>
+            <stringProp name="scriptContent">// Financial Transaction Validator
+import org.jpos.iso.ISOMsg;
+
+if (phase.equals(&quot;prepare&quot;)) {
+    ISOMsg msg = (ISOMsg) ctx.get(&quot;REQUEST&quot;);
+    log.info(&quot;Financial Validator: Validating transaction&quot;);
+
+    boolean valid = true;
+    String errorCode = &quot;00&quot;;
+
+    // Validate required fields
+    if (!msg.hasField(2)) {
+        log.warn(&quot;Financial Validator: Missing PAN (field 2)&quot;);
+        valid = false;
+        errorCode = &quot;14&quot;; // Invalid card number
+    }
+
+    if (!msg.hasField(4)) {
+        log.warn(&quot;Financial Validator: Missing Amount (field 4)&quot;);
+        valid = false;
+        errorCode = &quot;13&quot;; // Invalid amount
+    }
+
+    // Validate amount
+    if (valid &amp;&amp; msg.hasField(4)) {
+        String amountStr = msg.getString(4);
+        try {
+            long amount = Long.parseLong(amountStr);
+            if (amount &lt;= 0) {
+                log.warn(&quot;Financial Validator: Invalid amount: &quot; + amount);
+                valid = false;
+                errorCode = &quot;13&quot;;
+            } else if (amount &gt; 100000000) { // Max 1 million
+                log.warn(&quot;Financial Validator: Amount exceeds limit: &quot; + amount);
+                valid = false;
+                errorCode = &quot;61&quot;; // Exceeds withdrawal limit
+            }
+        } catch (NumberFormatException e) {
+            valid = false;
+            errorCode = &quot;13&quot;;
+        }
+    }
+
+    ctx.put(&quot;VALIDATION_RESULT&quot;, valid);
+    ctx.put(&quot;RESPONSE_CODE&quot;, errorCode);
+
+    if (!valid) {
+        log.warn(&quot;Financial Validator: Validation failed, code=&quot; + errorCode);
+    } else {
+        log.info(&quot;Financial Validator: Validation passed&quot;);
+    }
+
+    result = PREPARED;
+}
+</stringProp>
+            <stringProp name="logger">Q2</stringProp>
+          </elementProp>
+          <elementProp name="" elementType="TxnMgrTreeNode">
+            <intProp name="nodeId">22</intProp>
+            <intProp name="parentId">20</intProp>
+            <stringProp name="nodeType">SCRIPT</stringProp>
+            <stringProp name="scriptName">Financial Processor</stringProp>
+            <stringProp name="scriptContent">// Financial Transaction Processor
+import org.jpos.iso.ISOMsg;
+import org.jpos.iso.ISOSource;
+
+if (phase.equals(&quot;prepare&quot;)) {
+    ISOMsg msg = (ISOMsg) ctx.get(&quot;REQUEST&quot;);
+    Boolean valid = (Boolean) ctx.get(&quot;VALIDATION_RESULT&quot;);
+    String responseCode = (String) ctx.get(&quot;RESPONSE_CODE&quot;);
+
+    log.info(&quot;Financial Processor: Processing transaction&quot;);
+
+    // Create response
+    ISOMsg response = (ISOMsg) msg.clone();
+    response.setResponseMTI();
+
+    if (valid != null &amp;&amp; valid.booleanValue()) {
+        // Process the transaction
+        String pan = msg.getString(2);
+        String amount = msg.getString(4);
+        String processingCode = msg.getString(3);
+
+        log.info(&quot;Financial Processor: PAN=&quot; + pan.substring(0, 6) + &quot;****&quot; + pan.substring(pan.length() - 4));
+        log.info(&quot;Financial Processor: Amount=&quot; + amount);
+        log.info(&quot;Financial Processor: Processing Code=&quot; + processingCode);
+
+        // Simulate authorization
+        response.set(39, &quot;00&quot;); // Approved
+        response.set(38, String.format(&quot;%06d&quot;, (int)(Math.random() * 999999))); // Auth code
+
+        log.info(&quot;Financial Processor: Transaction approved&quot;);
+    } else {
+        response.set(39, responseCode != null ? responseCode : &quot;05&quot;);
+        log.info(&quot;Financial Processor: Transaction declined, code=&quot; + responseCode);
+    }
+
+    // Send response in prepare phase
+    ISOSource src = (ISOSource) ctx.get(&quot;SOURCE&quot;);
+    if (src != null) {
+        src.send(response);
+        log.info(&quot;Financial Processor: Response sent MTI=&quot; + response.getMTI() + &quot; RC=&quot; + response.getString(39));
+    }
+
+    ctx.put(&quot;RESPONSE&quot;, response);
+    result = PREPARED | NO_JOIN;
+}
+</stringProp>
+            <stringProp name="logger">Q2</stringProp>
+          </elementProp>
+          <elementProp name="Reversal" elementType="TxnMgrTreeNode" testname="Reversal">
+            <intProp name="nodeId">30</intProp>
+            <intProp name="parentId">-1</intProp>
+            <stringProp name="nodeType">GROUP</stringProp>
+          </elementProp>
+          <elementProp name="" elementType="TxnMgrTreeNode">
+            <intProp name="nodeId">31</intProp>
+            <intProp name="parentId">30</intProp>
+            <stringProp name="nodeType">SCRIPT</stringProp>
+            <stringProp name="scriptName">Reversal Handler</stringProp>
+            <stringProp name="scriptContent">// Reversal Transaction Handler (0400/0420)
+import org.jpos.iso.ISOMsg;
+import org.jpos.iso.ISOSource;
+
+if (phase.equals(&quot;prepare&quot;)) {
+    ISOMsg msg = (ISOMsg) ctx.get(&quot;REQUEST&quot;);
+    log.info(&quot;Reversal Handler: Processing reversal &quot; + msg.getMTI());
+
+    // Get original transaction reference
+    String stan = msg.getString(11);
+    String rrn = msg.getString(37);
+    String amount = msg.getString(4);
+
+    log.info(&quot;Reversal Handler: STAN=&quot; + stan + &quot; RRN=&quot; + rrn + &quot; Amount=&quot; + amount);
+
+    // Create reversal response
+    ISOMsg response = (ISOMsg) msg.clone();
+    response.setResponseMTI();
+
+    // Simulate reversal processing
+    // In real implementation, you would look up the original transaction
+    response.set(39, &quot;00&quot;); // Reversal accepted
+
+    log.info(&quot;Reversal Handler: Reversal accepted&quot;);
+
+    // Send response in prepare phase
+    ISOSource src = (ISOSource) ctx.get(&quot;SOURCE&quot;);
+    if (src != null) {
+        src.send(response);
+        log.info(&quot;Reversal Handler: Response sent MTI=&quot; + response.getMTI());
+    }
+
+    ctx.put(&quot;RESPONSE&quot;, response);
+    result = PREPARED | NO_JOIN;
+}
+</stringProp>
+            <stringProp name="logger">Q2</stringProp>
+          </elementProp>
+          <elementProp name="Authorization" elementType="TxnMgrTreeNode" testname="Authorization">
+            <intProp name="nodeId">40</intProp>
+            <intProp name="parentId">-1</intProp>
+            <stringProp name="nodeType">GROUP</stringProp>
+          </elementProp>
+          <elementProp name="" elementType="TxnMgrTreeNode">
+            <intProp name="nodeId">41</intProp>
+            <intProp name="parentId">40</intProp>
+            <stringProp name="nodeType">SCRIPT</stringProp>
+            <stringProp name="scriptName">Auth Handler</stringProp>
+            <stringProp name="scriptContent">// Authorization Request Handler (0100)
+import org.jpos.iso.ISOMsg;
+import org.jpos.iso.ISOSource;
+
+if (phase.equals(&quot;prepare&quot;)) {
+    ISOMsg msg = (ISOMsg) ctx.get(&quot;REQUEST&quot;);
+    ISOSource src = (ISOSource) ctx.get(&quot;SOURCE&quot;);
+    log.info(&quot;Auth Handler: Processing authorization &quot; + msg.getMTI());
+
+    String pan = msg.getString(2);
+    String amount = msg.getString(4);
+    String processingCode = msg.getString(3);
+
+    log.info(&quot;Auth Handler: PAN=&quot; + (pan != null ? pan.substring(0, 6) + &quot;****&quot; : &quot;null&quot;));
+    log.info(&quot;Auth Handler: Amount=&quot; + amount);
+
+    // Create authorization response
+    ISOMsg response = (ISOMsg) msg.clone();
+    response.setResponseMTI();
+
+    // Simple authorization logic
+    boolean approved = true;
+    String responseCode = &quot;00&quot;;
+
+    // Check amount limit for authorization
+    if (amount != null) {
+        try {
+            long amt = Long.parseLong(amount);
+            if (amt &gt; 50000000) { // 500,000 limit for auth
+                approved = false;
+                responseCode = &quot;61&quot;; // Exceeds limit
+            }
+        } catch (NumberFormatException e) {
+            approved = false;
+            responseCode = &quot;13&quot;;
+        }
+    }
+
+    if (approved) {
+        response.set(39, &quot;00&quot;);
+        response.set(38, String.format(&quot;%06d&quot;, (int)(Math.random() * 999999)));
+        log.info(&quot;Auth Handler: Authorization approved&quot;);
+    } else {
+        response.set(39, responseCode);
+        log.info(&quot;Auth Handler: Authorization declined, code=&quot; + responseCode);
+    }
+
+    // Send response in prepare phase while channel is still connected
+    if (src != null) {
+        src.send(response);
+        log.info(&quot;Auth Handler: Response sent MTI=&quot; + response.getMTI() + &quot; RC=&quot; + response.getString(39));
+    }
+
+    ctx.put(&quot;RESPONSE&quot;, response);
+    result = PREPARED | NO_JOIN;
+}
+</stringProp>
+            <stringProp name="logger">Q2</stringProp>
+          </elementProp>
+          <elementProp name="Default" elementType="TxnMgrTreeNode" testname="Default">
+            <intProp name="nodeId">50</intProp>
+            <intProp name="parentId">-1</intProp>
+            <stringProp name="nodeType">GROUP</stringProp>
+          </elementProp>
+          <elementProp name="" elementType="TxnMgrTreeNode">
+            <intProp name="nodeId">51</intProp>
+            <intProp name="parentId">50</intProp>
+            <stringProp name="nodeType">SCRIPT</stringProp>
+            <stringProp name="scriptName">Default Handler</stringProp>
+            <stringProp name="scriptContent">// Default Handler - Handles unknown MTIs
+import org.jpos.iso.ISOMsg;
+import org.jpos.iso.ISOSource;
+
+if (phase.equals(&quot;prepare&quot;)) {
+    ISOMsg msg = (ISOMsg) ctx.get(&quot;REQUEST&quot;);
+    ISOSource src = (ISOSource) ctx.get(&quot;SOURCE&quot;);
+    log.warn(&quot;Default Handler: Received unsupported MTI=&quot; + msg.getMTI());
+
+    // Create error response
+    ISOMsg response = (ISOMsg) msg.clone();
+    response.setResponseMTI();
+    response.set(39, &quot;12&quot;); // Invalid transaction
+
+    // Send response in prepare phase while channel is still connected
+    if (src != null) {
+        src.send(response);
+        log.warn(&quot;Default Handler: Sent decline response MTI=&quot; + response.getMTI());
+    }
+
+    ctx.put(&quot;RESPONSE&quot;, response);
+    result = PREPARED | NO_JOIN;
+}
+</stringProp>
+            <stringProp name="logger">Q2</stringProp>
+          </elementProp>
+          <elementProp name="" elementType="TxnMgrTreeNode">
+            <intProp name="nodeId">52</intProp>
+            <intProp name="parentId">-1</intProp>
+            <stringProp name="nodeType">PARTICIPANT</stringProp>
+            <stringProp name="className">org.jpos.transaction.participant.SelectDestination</stringProp>
+            <stringProp name="logger">Q2</stringProp>
+          </elementProp>
+          <elementProp name="0200" elementType="TxnMgrTreeNode" testname="0200">
+            <intProp name="nodeId">53</intProp>
+            <intProp name="parentId">52</intProp>
+            <stringProp name="nodeType">PROPERTY</stringProp>
+            <stringProp name="propValue">Financial</stringProp>
+          </elementProp>
+          <elementProp name="0400" elementType="TxnMgrTreeNode" testname="0400">
+            <intProp name="nodeId">54</intProp>
+            <intProp name="parentId">52</intProp>
+            <stringProp name="nodeType">PROPERTY</stringProp>
+            <stringProp name="propValue">Reversal</stringProp>
+          </elementProp>
+          <elementProp name="0800" elementType="TxnMgrTreeNode" testname="0800">
+            <intProp name="nodeId">55</intProp>
+            <intProp name="parentId">52</intProp>
+            <stringProp name="nodeType">PROPERTY</stringProp>
+            <stringProp name="propValue">Network</stringProp>
+          </elementProp>
+        </collectionProp>
+        <stringProp name="txnMgrName">TestTxnMgr</stringProp>
+        <stringProp name="space">tspace:default</stringProp>
+        <stringProp name="queue">txnmgr-queue</stringProp>
+        <stringProp name="sessions">2</stringProp>
+        <boolProp name="debug">true</boolProp>
+      </ISO8583TransactionManager>
+      <hashTree/>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Server Wait Thread" enabled="true">
+        <intProp name="ThreadGroup.num_threads">1</intProp>
+        <intProp name="ThreadGroup.ramp_time">0</intProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller">
+          <intProp name="LoopController.loops">-1</intProp>
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+        <TestAction guiclass="TestActionGui" testclass="TestAction" testname="Wait Forever" enabled="true">
+          <intProp name="ActionProcessor.action">1</intProp>
+          <intProp name="ActionProcessor.target">0</intProp>
+          <stringProp name="ActionProcessor.duration">3600000</stringProp>
+        </TestAction>
+        <hashTree/>
+      </hashTree>
+      <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree" enabled="true">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>false</responseData>
+            <samplerData>false</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>false</responseHeaders>
+            <requestHeaders>false</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename"></stringProp>
+      </ResultCollector>
+      <hashTree/>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>

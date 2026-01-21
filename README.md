@@ -3,11 +3,13 @@
 Overview
 --------
 
-Apache JMeter plugin for load testing of payment gateways and switches via [ISO 8583](https://en.wikipedia.org/wiki/ISO_8583) messaging, 
+Apache JMeter plugin for load testing of payment gateways and switches via [ISO 8583](https://en.wikipedia.org/wiki/ISO_8583) messaging,
 based on the excellent [jPOS framework](http://jpos.org/). Includes the following components:
 
 - [*ISO8583 Sampler*](#sampler) for defining and sending messages,
-- [*ISO8583 Connection Configuration*](#config) for integration with the system under test,
+- [*ISO8583 Connection Configuration*](#config) for client-mode integration with the system under test,
+- [*ISO8583 Server*](#server) for server-mode operation where JMeter receives incoming connections,
+- [*ISO8583 Transaction Manager*](#txnmgr) for advanced server-mode request processing with jPOS TransactionManager,
 - [*ISO8583 Message Component*](#component) (optional) for sharing common message fields,
 - [*ISO8583 Crypto PreProcessor*](#crypto) (optional) for encryption operations of certain message elements (PIN Block, MAC, ARQC).
 - [*Crypto functions*](#functions) (optional) for non-message related cryptographic calculations.
@@ -143,6 +145,146 @@ These descriptors are then used to create and deploy QBeans at the test start an
 
 For even more advanced use cases, above XML files may still be used and copied to the Q2 deploy folder.
 Its location is configurable via JMeter property `jmeter.iso8583.q2DeployDir`.
+
+
+<h3 id="server">ISO8583 Server</h3>
+
+This Configuration Element starts an ISO8583 server that listens for incoming connections from external systems.
+It is designed for scenarios where JMeter acts as a payment switch or acquirer host simulator.
+
+The server shares the Q2 container with *ISO8583 Connection Configuration*, so both can coexist in the same test plan.
+
+Settings:
+- *Connection Reference*: Identifier for this server instance.
+- *Port*: TCP port number to listen on for incoming connections.
+- *Channel Class*: The jPOS channel class for message framing (same options as Connection Configuration).
+- *Packager Configuration*: XML file defining the message format.
+- *Channel Header*: Optional static header for all messages.
+- *Advanced Configuration*: Channel-specific properties as Name/Value pairs.
+- *SSL Settings*: For SSL/TLS connections, configure keystore with server certificate.
+- *Connection Selection*: When multiple clients connect, determines which connection receives responses:
+  - "Last connected" (default): Most recently connected client.
+  - "Round robin": Cycles through connections.
+  - "All connected": Broadcasts to all clients.
+- *Request Listener*: Determines how incoming requests are processed:
+  - *Script File*: Groovy script for simple request handling.
+  - *Transaction Manager*: Routes requests to an *ISO8583 Transaction Manager* for advanced processing.
+    Format: `txnmgr:<queue-name>` (e.g., `txnmgr:txnmgr-queue`).
+
+#### Example: Simple Script-based Response
+
+```groovy
+if (message.getMTI() == "0800") {
+    message.setResponseMTI()
+    message.set(39, "00")
+    source.send(message)
+}
+```
+
+#### Example: Transaction Manager Integration
+
+Set *Request Listener* to `txnmgr:txnmgr-queue` and add an *ISO8583 Transaction Manager* element
+with matching queue name for advanced request processing with multiple participants.
+
+
+<h3 id="txnmgr">ISO8583 Transaction Manager</h3>
+
+This Configuration Element deploys a jPOS [TransactionManager](http://jpos.org/doc/proguide.pdf)
+for processing incoming ISO8583 messages with a pipeline of participants.
+
+It works in conjunction with *ISO8583 Server* configured to use the Transaction Manager as its request listener.
+
+Settings:
+- *Name*: TransactionManager instance name.
+- *Space*: jPOS Space for transaction context (default: `tspace:default`).
+- *Queue*: Queue name that matches the *ISO8583 Server* request listener (e.g., `txnmgr-queue`).
+- *Sessions*: Number of concurrent processing threads.
+- *Debug*: Enable detailed transaction logging.
+- *Participants and Groups*: Tree structure defining the transaction processing pipeline.
+
+#### Participant Types
+
+The tree editor supports three node types:
+
+1. **Participants**: Java classes implementing `TransactionParticipant` interface.
+   - Configure with class name, logger, and optional properties.
+
+2. **Groups**: Named collections of participants for routing.
+   - Used with `GroupSelector` participants to route based on message content.
+
+3. **BeanShell Scripts**: Inline scripts for custom processing logic.
+   - Access to `ctx` (Context), `request` (ISOMsg), `source` (ISOSource), `log`, and phase control.
+
+#### Built-in Sample Participants
+
+The plugin includes sample participants for common use cases:
+
+| Class | Description |
+|-------|-------------|
+| `nz.co.breakpoint.jmeter.iso8583.participants.SampleSelector` | Routes messages based on MTI to named groups |
+| `nz.co.breakpoint.jmeter.iso8583.participants.SampleNetworkHandler` | Handles network management messages (0800) |
+| `nz.co.breakpoint.jmeter.iso8583.participants.SampleFinancialHandler` | Handles financial messages (0200, 0400) |
+| `nz.co.breakpoint.jmeter.iso8583.participants.SampleResponseSender` | Sends response from context back to client |
+| `nz.co.breakpoint.jmeter.iso8583.participants.BeanShellParticipant` | Executes BeanShell scripts for custom logic |
+
+#### Example: Selector-based Routing
+
+```
+TransactionManager
+├── [P] SampleSelector
+│    ├── 0800 = Network
+│    └── 0200 = Financial
+├── [G] Network
+│    └── [P] SampleNetworkHandler
+└── [G] Financial
+     └── [P] SampleFinancialHandler
+```
+
+#### BeanShell Script Variables
+
+When using BeanShell scripts (either via `BeanShellParticipant` or inline scripts), the following variables are available:
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `id` | `long` | Transaction ID |
+| `ctx` | `Context` | Transaction context for storing/retrieving data |
+| `request` | `ISOMsg` | The incoming ISO message (from `ctx.get("REQUEST")`) |
+| `source` | `ISOSource` | Channel for sending responses (from `ctx.get("SOURCE")`) |
+| `cfg` | `Configuration` | Participant configuration properties |
+| `log` | `Log` | jPOS logger for logging messages |
+| `phase` | `String` | Current phase: "prepare", "commit", or "abort" |
+| `result` | `int` | Set to control return value (PREPARED, ABORTED, NO_JOIN, READONLY) |
+| `destination` | `String` | Set to route to a named group (for GroupSelector) |
+
+#### Example: BeanShell Network Handler
+
+```java
+import org.jpos.iso.ISOMsg;
+import org.jpos.iso.ISOSource;
+
+if (phase.equals("prepare")) {
+    ISOMsg msg = (ISOMsg) ctx.get("REQUEST");
+    ISOSource src = (ISOSource) ctx.get("SOURCE");
+
+    log.info("Processing MTI: " + msg.getMTI());
+
+    // Create response
+    ISOMsg response = (ISOMsg) msg.clone();
+    response.setResponseMTI();
+    response.set(39, "00");
+
+    // Send response while channel is still connected
+    if (src != null) {
+        src.send(response);
+    }
+
+    ctx.put("RESPONSE", response);
+    result = PREPARED | NO_JOIN;
+}
+```
+
+**Important:** Responses must be sent in the `prepare` phase while the channel is still connected.
+Use `result = PREPARED | NO_JOIN` to skip commit/abort phases after sending the response.
 
 
 <h3 id="sampler">ISO8583 Sampler</h3>

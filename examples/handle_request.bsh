@@ -1,0 +1,22 @@
+import org.jpos.iso.ISOMsg;
+import org.jpos.iso.ISOSource;
+import org.jpos.transaction.Context;
+import org.jpos.space.Space;
+import org.jpos.space.SpaceFactory;
+
+// 1. Create a new jPOS Context
+Context ctx = new Context();
+
+// 2. Put the message and the source into the context
+// Standard keys are usually "REQUEST" and "ISOSOURCE"
+ctx.put("REQUEST", message);
+ctx.put("ISOSOURCE", source);
+
+// 3. Get the Space (tspace:default is common)
+Space sp = SpaceFactory.getSpace("tspace:default");
+
+// 4. Push the context into the queue monitored by your TransactionManager
+// The queue name (e.g., "TXNMGR") must match the "queue" property in ", ctx);
+
+// 5. Return true to indicate the message has been handled
+return true;

@@ -1,0 +1,523 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="ISO8583 Client Test Plan" enabled="true">
+      <stringProp name="TestPlan.comments">Client-mode test plan to test ISO8583 Server.
+
+Usage:
+1. First start the server: jmeter -n -t ISO8583-Server-TestPlan.jmx
+2. Then run this client: jmeter -n -t ISO8583-ClientMode-TestPlan.jmx
+
+This test sends various ISO8583 message types to test the server:
+- 0800: Network Management (Echo Test)
+- 0100: Authorization Request
+- 0200: Financial Transaction (Purchase)
+- 0400: Reversal</stringProp>
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+        <collectionProp name="Arguments.arguments"/>
+      </elementProp>
+      <stringProp name="TestPlan.user_define_classpath"></stringProp>
+    </TestPlan>
+    <hashTree>
+
+      <!-- ISO8583 Connection Configuration -->
+      <nz.co.breakpoint.jmeter.iso8583.ISO8583Config guiclass="TestBeanGUI" testclass="nz.co.breakpoint.jmeter.iso8583.ISO8583Config" testname="ISO8583 Connection Configuration" enabled="true">
+        <stringProp name="configKey">client</stringProp>
+        <stringProp name="classname">ASCIIChannel</stringProp>
+        <stringProp name="packager">jar:packager/iso87ascii.xml</stringProp>
+        <stringProp name="packagerConfig"></stringProp>
+        <stringProp name="header"></stringProp>
+        <stringProp name="host">127.0.0.1</stringProp>
+        <stringProp name="port">10000</stringProp>
+        <stringProp name="muxName">clientMux</stringProp>
+        <stringProp name="channelReconnectDelay">10000</stringProp>
+        <stringProp name="timeout">30000</stringProp>
+        <collectionProp name="channelProps"/>
+        <collectionProp name="muxProps"/>
+      </nz.co.breakpoint.jmeter.iso8583.ISO8583Config>
+      <hashTree/>
+
+      <!-- Thread Group -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="ISO8583 Client Tests" enabled="true">
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <stringProp name="LoopController.loops">1</stringProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">1</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">0</stringProp>
+        <boolProp name="ThreadGroup.scheduler">false</boolProp>
+        <stringProp name="ThreadGroup.duration"></stringProp>
+        <stringProp name="ThreadGroup.delay"></stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+      </ThreadGroup>
+      <hashTree>
+
+        <!-- 0800 Echo Test -->
+        <nz.co.breakpoint.jmeter.iso8583.ISO8583Sampler guiclass="TestBeanGUI" testclass="nz.co.breakpoint.jmeter.iso8583.ISO8583Sampler" testname="0800 Echo Test" enabled="true">
+          <stringProp name="configKey">client</stringProp>
+          <stringProp name="timeout">30000</stringProp>
+          <collectionProp name="fields">
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">0</stringProp>
+              <stringProp name="content">0800</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">MTI</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">3</stringProp>
+              <stringProp name="content">180000</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Processing Code - Echo</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">7</stringProp>
+              <stringProp name="content">${__time(MMddHHmmss)}</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Transmission Date/Time</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">11</stringProp>
+              <stringProp name="content">${__Random(100000,999999)}</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">STAN</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">41</stringProp>
+              <stringProp name="content">TERM0001</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Terminal ID</stringProp>
+            </elementProp>
+          </collectionProp>
+          <collectionProp name="responseCodePattern">
+            <stringProp name="field">39</stringProp>
+            <stringProp name="pattern">00</stringProp>
+          </collectionProp>
+          <collectionProp name="responseValidation"/>
+        </nz.co.breakpoint.jmeter.iso8583.ISO8583Sampler>
+        <hashTree/>
+
+        <!-- 0100 Authorization Request -->
+        <nz.co.breakpoint.jmeter.iso8583.ISO8583Sampler guiclass="TestBeanGUI" testclass="nz.co.breakpoint.jmeter.iso8583.ISO8583Sampler" testname="0100 Authorization" enabled="true">
+          <stringProp name="configKey">client</stringProp>
+          <stringProp name="timeout">30000</stringProp>
+          <collectionProp name="fields">
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">0</stringProp>
+              <stringProp name="content">0100</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">MTI - Authorization Request</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">2</stringProp>
+              <stringProp name="content">4111111111111111</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">PAN</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">3</stringProp>
+              <stringProp name="content">000000</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Processing Code - Purchase</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">4</stringProp>
+              <stringProp name="content">000000005000</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Amount - $50.00</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">7</stringProp>
+              <stringProp name="content">${__time(MMddHHmmss)}</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Transmission Date/Time</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">11</stringProp>
+              <stringProp name="content">${__Random(100000,999999)}</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">STAN</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">14</stringProp>
+              <stringProp name="content">2512</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Expiry Date - Dec 2025</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">22</stringProp>
+              <stringProp name="content">051</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">POS Entry Mode</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">41</stringProp>
+              <stringProp name="content">TERM0001</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Terminal ID</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">42</stringProp>
+              <stringProp name="content">MERCHANT00000001</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Merchant ID</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">49</stringProp>
+              <stringProp name="content">840</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Currency Code - USD</stringProp>
+            </elementProp>
+          </collectionProp>
+          <collectionProp name="responseCodePattern">
+            <stringProp name="field">39</stringProp>
+            <stringProp name="pattern">00</stringProp>
+          </collectionProp>
+          <collectionProp name="responseValidation"/>
+        </nz.co.breakpoint.jmeter.iso8583.ISO8583Sampler>
+        <hashTree/>
+
+        <!-- 0200 Purchase Transaction -->
+        <nz.co.breakpoint.jmeter.iso8583.ISO8583Sampler guiclass="TestBeanGUI" testclass="nz.co.breakpoint.jmeter.iso8583.ISO8583Sampler" testname="0200 Purchase" enabled="true">
+          <stringProp name="configKey">client</stringProp>
+          <stringProp name="timeout">30000</stringProp>
+          <collectionProp name="fields">
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">0</stringProp>
+              <stringProp name="content">0200</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">MTI - Financial Transaction</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">2</stringProp>
+              <stringProp name="content">5500000000000004</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">PAN - Mastercard</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">3</stringProp>
+              <stringProp name="content">000000</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Processing Code - Purchase</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">4</stringProp>
+              <stringProp name="content">000000012500</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Amount - $125.00</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">7</stringProp>
+              <stringProp name="content">${__time(MMddHHmmss)}</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Transmission Date/Time</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">11</stringProp>
+              <stringProp name="content">${__Random(100000,999999)}</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">STAN</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">12</stringProp>
+              <stringProp name="content">${__time(HHmmss)}</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Local Time</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">13</stringProp>
+              <stringProp name="content">${__time(MMdd)}</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Local Date</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">14</stringProp>
+              <stringProp name="content">2612</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Expiry Date - Dec 2026</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">22</stringProp>
+              <stringProp name="content">051</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">POS Entry Mode - Chip</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">23</stringProp>
+              <stringProp name="content">001</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Card Sequence Number</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">25</stringProp>
+              <stringProp name="content">00</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">POS Condition Code</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">35</stringProp>
+              <stringProp name="content">5500000000000004D2612101123400001</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Track 2 Data</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">41</stringProp>
+              <stringProp name="content">TERM0001</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Terminal ID</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">42</stringProp>
+              <stringProp name="content">MERCHANT00000001</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Merchant ID</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">49</stringProp>
+              <stringProp name="content">840</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Currency Code - USD</stringProp>
+            </elementProp>
+          </collectionProp>
+          <collectionProp name="responseCodePattern">
+            <stringProp name="field">39</stringProp>
+            <stringProp name="pattern">00</stringProp>
+          </collectionProp>
+          <collectionProp name="responseValidation"/>
+        </nz.co.breakpoint.jmeter.iso8583.ISO8583Sampler>
+        <hashTree/>
+
+        <!-- 0200 Balance Inquiry -->
+        <nz.co.breakpoint.jmeter.iso8583.ISO8583Sampler guiclass="TestBeanGUI" testclass="nz.co.breakpoint.jmeter.iso8583.ISO8583Sampler" testname="0200 Balance Inquiry" enabled="true">
+          <stringProp name="configKey">client</stringProp>
+          <stringProp name="timeout">30000</stringProp>
+          <collectionProp name="fields">
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">0</stringProp>
+              <stringProp name="content">0200</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">MTI - Financial Transaction</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">2</stringProp>
+              <stringProp name="content">4111111111111111</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">PAN</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">3</stringProp>
+              <stringProp name="content">310000</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Processing Code - Balance Inquiry</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">4</stringProp>
+              <stringProp name="content">000000000000</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Amount - Zero for balance inquiry</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">7</stringProp>
+              <stringProp name="content">${__time(MMddHHmmss)}</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Transmission Date/Time</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">11</stringProp>
+              <stringProp name="content">${__Random(100000,999999)}</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">STAN</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">14</stringProp>
+              <stringProp name="content">2512</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Expiry Date</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">22</stringProp>
+              <stringProp name="content">051</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">POS Entry Mode</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">41</stringProp>
+              <stringProp name="content">TERM0001</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Terminal ID</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">42</stringProp>
+              <stringProp name="content">MERCHANT00000001</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Merchant ID</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">49</stringProp>
+              <stringProp name="content">840</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Currency Code</stringProp>
+            </elementProp>
+          </collectionProp>
+          <collectionProp name="responseCodePattern">
+            <stringProp name="field">39</stringProp>
+            <stringProp name="pattern">00</stringProp>
+          </collectionProp>
+          <collectionProp name="responseValidation"/>
+        </nz.co.breakpoint.jmeter.iso8583.ISO8583Sampler>
+        <hashTree/>
+
+        <!-- 0400 Reversal -->
+        <nz.co.breakpoint.jmeter.iso8583.ISO8583Sampler guiclass="TestBeanGUI" testclass="nz.co.breakpoint.jmeter.iso8583.ISO8583Sampler" testname="0400 Reversal" enabled="true">
+          <stringProp name="configKey">client</stringProp>
+          <stringProp name="timeout">30000</stringProp>
+          <collectionProp name="fields">
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">0</stringProp>
+              <stringProp name="content">0400</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">MTI - Reversal</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">2</stringProp>
+              <stringProp name="content">4111111111111111</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">PAN</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">3</stringProp>
+              <stringProp name="content">000000</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Processing Code</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">4</stringProp>
+              <stringProp name="content">000000005000</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Amount to Reverse</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">7</stringProp>
+              <stringProp name="content">${__time(MMddHHmmss)}</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Transmission Date/Time</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">11</stringProp>
+              <stringProp name="content">${__Random(100000,999999)}</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">STAN</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">41</stringProp>
+              <stringProp name="content">TERM0001</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Terminal ID</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">42</stringProp>
+              <stringProp name="content">MERCHANT00000001</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Merchant ID</stringProp>
+            </elementProp>
+            <elementProp name="" elementType="nz.co.breakpoint.jmeter.iso8583.MessageField">
+              <stringProp name="id">49</stringProp>
+              <stringProp name="content">840</stringProp>
+              <stringProp name="tag"></stringProp>
+              <stringProp name="comment">Currency Code</stringProp>
+            </elementProp>
+          </collectionProp>
+          <collectionProp name="responseCodePattern">
+            <stringProp name="field">39</stringProp>
+            <stringProp name="pattern">00</stringProp>
+          </collectionProp>
+          <collectionProp name="responseValidation"/>
+        </nz.co.breakpoint.jmeter.iso8583.ISO8583Sampler>
+        <hashTree/>
+
+      </hashTree>
+
+      <!-- View Results Tree -->
+      <ResultCollector guiclass="ViewResultsFullVisualizer" testclass="ResultCollector" testname="View Results Tree" enabled="true">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>true</responseData>
+            <samplerData>true</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>true</responseHeaders>
+            <requestHeaders>true</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename"></stringProp>
+      </ResultCollector>
+      <hashTree/>
+
+      <!-- Summary Report -->
+      <ResultCollector guiclass="SummaryReport" testclass="ResultCollector" testname="Summary Report" enabled="true">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>false</responseData>
+            <samplerData>false</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>false</responseHeaders>
+            <requestHeaders>false</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename"></stringProp>
+      </ResultCollector>
+      <hashTree/>
+
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>
